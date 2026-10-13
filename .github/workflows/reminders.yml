@@ -1,0 +1,33 @@
+name: Groom OS reminders
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+    - cron: "17 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  send-reminders:
+    if: github.event.schedule != '17 3 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call the protected reminder endpoint
+        env:
+          REMINDER_CRON_SECRET: ${{ secrets.REMINDER_CRON_SECRET }}
+        run: |
+          curl -fsS --retry 3 --retry-delay 15 --max-time 90 -X POST \
+            -H "Authorization: Bearer $REMINDER_CRON_SECRET" \
+            https://pet-grooming-salon-os.replit.app/api/internal/reminders/run
+
+  keep-alive:
+    if: github.event.schedule == '17 3 1 * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Re-enable this workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/reminders.yml/enable"
